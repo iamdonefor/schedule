@@ -30,25 +30,44 @@ class Collection(object):
         
         self.count += 1
 
+# linear generator
 class Generator(object):
     def __init__(self, collection):
         self.c = collection
         self.tracks = copy(collection.tracks)
+        self.init2()
+
+    def init2(self):
         self.idx = 0
+
+    def get_track(self):
+        return self.tracks[self.idx]
 
     def next(self):
         if self.idx == self.c.count:
             raise StopIteration
-        track = self.tracks[self.idx]
+        track = self.get_track()
         self.idx += 1
         return (track, int(round(track.duration)))
 
-    def shuffle(self):
-        shuffle(self.tracks)
-        self.idx = 0
-
     def __iter__(self):
         return self
+
+# truly random
+class GeneratorRandomMandatory(Generator):
+    def init2(self):
+        self.idx = 0
+        shuffle(self.tracks)
+        self.mandatory = filter(lambda x: getattr(x, 'mandatory', False), self.tracks)
+        for track in self.mandatory:
+            self.tracks.remove(track)
+        for track in self.mandatory:
+            self.tracks.insert(0, track)
+
+    def get_track(self):    
+        return self.tracks[self.idx]
+
+Gena = GeneratorRandomMandatory
         
 def load_from_file(filename):
     c = Collection()
@@ -73,7 +92,8 @@ def pack(target, generator, precision=5):
     tlen = len(times)
     items = {}
     path = []
-    points = [0] 
+    points = [0]
+    coll = 0
 
     for (i,v) in generator:
         items[i] = v
@@ -85,6 +105,8 @@ def pack(target, generator, precision=5):
             if times[p+v] is None:
                 times[p+v] = i
                 newpoints.append(p+v)
+            else:
+                coll+=1
         points += newpoints
 
         # check early exit
@@ -140,7 +162,6 @@ def print_playlist(pl):
 def main(args):
     tracks = load_from_file(args.tracks)
     jingles = load_from_file(args.jingles)
-    gen = Generator(tracks)
     pls = []
 
     jingles_to_play = [choice(jingles.tracks) for i in range(5)]
@@ -148,10 +169,15 @@ def main(args):
     jingles_duration = 0
 #    print "-".join(str(x.id)+x.dt for x in jingles_to_play), jingles_duration
 
+    tracks.tracks[1].mandatory = True
+    tracks.tracks[10].mandatory = True
+
     for i in range(30):
-        path = pack(DAY-jingles_duration, gen)
-        pls.append((score(path), path))
-        gen.shuffle()
+        gen = Gena(tracks)
+        pl = pack(DAY-jingles_duration, gen)
+        scorev = score(pl)
+        print_playlist(pl)
+        pls.append((scorev, pl))
 
     pls.sort()
     print_playlist(pls[0][1])
