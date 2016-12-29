@@ -35,6 +35,7 @@ class Generator(object):
     def __init__(self, collection):
         self.c = collection
         self.tracks = copy(collection.tracks)
+        self.idx = 0
         self.init2()
 
     def init2(self):
@@ -56,16 +57,27 @@ class Generator(object):
 # truly random
 class GeneratorRandomMandatory(Generator):
     def init2(self):
-        self.idx = 0
-        shuffle(self.tracks)
         self.mandatory = filter(lambda x: getattr(x, 'mandatory', False), self.tracks)
         for track in self.mandatory:
             self.tracks.remove(track)
-        for track in self.mandatory:
-            self.tracks.insert(0, track)
+        shuffle(self.tracks)
+        self.dts = {'mrn':0,'day':0,'eve':0,'ngt':0}
 
-    def get_track(self):    
-        return self.tracks[self.idx]
+    def get_track(self):
+        if self.mandatory:
+            t = self.mandatory.pop()
+            self.dts[t.dt] += 1
+        elif self.tracks:
+            dt = sorted(self.dts.items(),key=lambda x: x[1])[0][0]
+
+            for t in self.tracks:
+                if t.dt == dt:
+                    self.tracks.remove(t)
+                    self.dts[dt] += 1
+                    break
+            else:
+                t = self.tracks.pop()
+        return t
 
 Gena = GeneratorRandomMandatory
         
@@ -113,11 +125,16 @@ def pack(target, generator, precision=5):
         for t in range(tlen-1, tlen-precision, -1):
             if times[t] is not None:
                 break
+        else:
+            continue
+        break
 
     # find best
     for t in range(tlen-1, 0, -1):
         if times[t] is not None:
             break
+
+    print "coll:", coll
 
     # reconstruct
     while True:
@@ -130,7 +147,7 @@ def pack(target, generator, precision=5):
 
     return path
 
-def score(pl):
+def score(pl, c):
     penalty = 0.0
     ttime = 0.0
     dtimes = defaultdict(float)
@@ -144,7 +161,11 @@ def score(pl):
     for dt in ['mrn', 'day', 'eve', 'ngt']:
         penalty += abs(dtimes[dt] - DAY/4)*0.1
 
-    penalty += abs(DAY - ttime) * 10
+    penalty += abs(DAY - ttime) * 50
+
+    for track in filter(lambda x: getattr(x, 'mandatory', False), c.tracks):
+        if not track in pl:
+            penalty += 1000
 
     return penalty
 
@@ -172,10 +193,10 @@ def main(args):
     tracks.tracks[1].mandatory = True
     tracks.tracks[10].mandatory = True
 
-    for i in range(30):
+    for i in range(300):
         gen = Gena(tracks)
         pl = pack(DAY-jingles_duration, gen)
-        scorev = score(pl)
+        scorev = score(pl, tracks)
         print_playlist(pl)
         pls.append((scorev, pl))
 
