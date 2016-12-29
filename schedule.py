@@ -134,8 +134,6 @@ def pack(target, generator, precision=5):
         if times[t] is not None:
             break
 
-    print "coll:", coll
-
     # reconstruct
     while True:
         i = times[t]
@@ -197,7 +195,7 @@ def main(args):
         gen = Gena(tracks)
         pl = pack(DAY-jingles_duration, gen)
         scorev = score(pl, tracks)
-        print_playlist(pl)
+#        print_playlist(pl)
         pls.append((scorev, pl))
 
     pls.sort()
