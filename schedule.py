@@ -167,14 +167,14 @@ def score(pl, c):
 
     return penalty
 
-def print_playlist(pl):
+def print_playlist(pl, score=''):
     ttime = 0.0
     dtimes = defaultdict(float)
     for track in pl:
         ttime += track.duration
         dtimes[track.dt] += track.duration
 
-    print ttime, "-".join(str(t.id) for t in pl)
+    print score, ttime, "-".join(str(t.id) for t in pl)
     print ",".join("%s:%s" % (i,v) for (i,v) in dtimes.items())
     
 
@@ -191,7 +191,7 @@ def main(args):
     tracks.tracks[1].mandatory = True
     tracks.tracks[10].mandatory = True
 
-    for i in range(300):
+    for i in range(args.tries):
         gen = Gena(tracks)
         pl = pack(DAY-jingles_duration, gen)
         scorev = score(pl, tracks)
@@ -199,14 +199,18 @@ def main(args):
         pls.append((scorev, pl))
 
     pls.sort()
-    print_playlist(pls[0][1])
+    print "best playlist(s):"
+    for i in range(args.bests):
+        print_playlist(pls[i][1], score=pls[i][0])
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--tracks", dest="tracks", default="tracks", help="tracks file")
     parser.add_argument("-j", "--jingles", dest="jingles", default="jingles", help="jingles file")
-    parser.add_argument("-d", "--duration", dest="duration", default="86400.0", help="duration")
+    parser.add_argument("-d", "--duration", dest="duration", default=86400.0, help="duration", type=float)
+    parser.add_argument("-n", dest="tries", default=300, help="number of playlists to create", type=int)
+    parser.add_argument("-b", dest="bests", default=3, help="number of best playlists to print", type=int)
     args = parser.parse_args()
 
     main(args)
